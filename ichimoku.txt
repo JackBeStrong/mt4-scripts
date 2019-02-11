@@ -632,7 +632,7 @@ void OnTick(){
 }
 
 string generateBarAlert(string _symbol, string _line, double _price, string _period){
-   return _symbol + " " + _period + " " + _line + " was in between bar! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price;
+   return _symbol + " " + _period + " " + _line + " was in between bar! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price + " | ";
 }
 
 void sendBarAlert(string _symbol, string _line, double _price, string _period){
@@ -662,6 +662,7 @@ void OnTimer(){
    // check current minute and seconds to send aggrevated alert
    if ((StringLen(barReport) >= 1) && (Seconds() >= 10) && ((Minute() == 0 || Minute() == 30))){
       Alert(barReport); 
+      SendNotification(barReport);
       barReport = "";
    }
 }
