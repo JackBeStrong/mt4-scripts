@@ -30,12 +30,18 @@
 // * added half hour line
 
 // version 0.7 27/01/19
-// * 定义价格=（bid价格+offer价格）/2,云图调出来, 4条线:Tenkan-sen, Kijun-sen, senkou span A, senkou span B, 对于 AUDUSD GBPUSD EURUSD NZDUSD XAUUSD USDJPY USDCAD USDCHF 这几个币种
-//       在30分钟、1小时、4小时、24小时的timeframe里面, 当价格cross以上任意一条线(包括向上和向下cross），检测在该币种该timeframe中15分钟内是否有提示，, 如果没有，发送提示
-//       当一个30分钟、1小时、4小时bar close的时候, 对于 AUDUSD GBPUSD EURUSD NZDUSD XAUUSD USDJPY USDCAD USDCHF 这几个币种, 如果high（刚close完的这跟BAR的最高价） > 4条线中的任意一条线，
-//       检测low是否小于这条线，如果是，发出提示 (eg.AUDUSD 30分钟走完一根bar，检测high是否大于4根线，如果高于Conversion line 和 Base line, 分别检测 low是不是小于Conversion line和 Base line，
-//       如果low 小于coversion line 但是不小于base line， 任然提示）如果low（刚close完的这跟BAR的最低价） < 4条线中的任意一条线，检测high是否大于这条线，如果是，发出提示
+// * ??????=??bid???+offer???/2,?????????, 4????:Tenkan-sen, Kijun-sen, senkou span A, senkou span B, ???? AUDUSD GBPUSD EURUSD NZDUSD XAUUSD USDJPY USDCAD USDCHF ????????
+//       ??30?????1С???4С???24С???timeframe????, ?????cross?????????????(?????????????cross??????????????timeframe??15????????????????, ?????У????????
+//       ?????30?????1С???4С?bar close?????, ???? AUDUSD GBPUSD EURUSD NZDUSD XAUUSD USDJPY USDCAD USDCHF ????????, ???high????close??????BAR??????? > 4?????е???????????
+//       ???low???С?????????????????????? (eg.AUDUSD 30???????????bar?????high??????4????????????Conversion line ?? Base line, ????? low?????С??Conversion line?? Base line??
+//       ???low С??coversion line ?????С??base line?? ???????????low????close??????BAR??????? < 4?????е??????????????high??????????????????????????
 // * updated new alert pattern
+
+// version 0.8 02/02/19
+// * added tenkan sen line (conversion line)
+
+// version 0.9
+// * instead of alert on each bar, add aggreated alerts on bar cross
 
 // set constant-------------------------------------------------------
 int reportPeriod = 1800; // report gap
@@ -47,57 +53,71 @@ string currenies[7] = {"AUDUSD","USDJPY",
 double prices[];
 
 // variables for 1h
+double tenkan_sens[];
 double kijun_sens[];
 double senkouSpanAs[];
 double senkouSpanBs[];
+bool aboveTenkan_sens[];
 bool aboveKijun_sens[];
 bool aboveSenkouSpanAs[];
 bool aboveSenkouSpanBs[];
 int counters[];
 datetime currentBarTime[];
+double tenkan_sens_previous_bar[];
 double kijun_sens_previous_bar[];
 double senkouSpanAs_previous_bar[];
 double senkouSpanBs_previous_bar[];
 
 // variables for 4h
+double tenkan_sens_4h[];
 double kijun_sens_4h[];
 double senkouSpanAs_4h[];
 double senkouSpanBs_4h[];
+bool aboveTenkan_sens_4h[];
 bool aboveKijun_sens_4h[];
 bool aboveSenkouSpanAs_4h[];
 bool aboveSenkouSpanBs_4h[];
 int counters_4h[];
 datetime currentBarTime_4h[];
+double tenkan_sens_previous_bar_4h[];
 double kijun_sens_previous_bar_4h[];
 double senkouSpanAs_previous_bar_4h[];
 double senkouSpanBs_previous_bar_4h[];
 
-
 // variables for 24h
+double tenkan_sens_24h[];
 double kijun_sens_24h[];
 double senkouSpanAs_24h[];
 double senkouSpanBs_24h[];
+bool aboveTenkan_sens_24h[];
 bool aboveKijun_sens_24h[];
 bool aboveSenkouSpanAs_24h[];
 bool aboveSenkouSpanBs_24h[];
 int counters_24h[];
 datetime currentBarTime_24h[];
+double tenkan_sens_previous_bar_24h[];
 double kijun_sens_previous_bar_24h[];
 double senkouSpanAs_previous_bar_24h[];
 double senkouSpanBs_previous_bar_24h[];
 
 // variables for half h
+double tenkan_sens_halfh[];
 double kijun_sens_halfh[];
 double senkouSpanAs_halfh[];
 double senkouSpanBs_halfh[];
+bool aboveTenkan_sens_halfh[];
 bool aboveKijun_sens_halfh[];
 bool aboveSenkouSpanAs_halfh[];
 bool aboveSenkouSpanBs_halfh[];
 int counters_halfh[];
 datetime currentBarTime_halfh[];
+double tenkan_sens_previous_bar_halfh[];
 double kijun_sens_previous_bar_halfh[];
 double senkouSpanAs_previous_bar_halfh[];
 double senkouSpanBs_previous_bar_halfh[];
+
+// bar report string
+string barReport = "";
 
 // -------------------------------------------------------------------
 
@@ -109,53 +129,65 @@ int OnInit(){
    ArrayResize(prices,noOfCurrencies);
    
    // 1h
+   ArrayResize(tenkan_sens,noOfCurrencies);
    ArrayResize(kijun_sens,noOfCurrencies);
    ArrayResize(senkouSpanAs,noOfCurrencies);
    ArrayResize(senkouSpanBs,noOfCurrencies);
+   ArrayResize(aboveTenkan_sens,noOfCurrencies);
    ArrayResize(aboveKijun_sens,noOfCurrencies);
    ArrayResize(aboveSenkouSpanAs,noOfCurrencies);
    ArrayResize(aboveSenkouSpanBs,noOfCurrencies);
    ArrayResize(counters,noOfCurrencies);
    ArrayResize(currentBarTime,noOfCurrencies);
+   ArrayResize(tenkan_sens_previous_bar,noOfCurrencies);
    ArrayResize(kijun_sens_previous_bar,noOfCurrencies);
    ArrayResize(senkouSpanAs_previous_bar,noOfCurrencies);
    ArrayResize(senkouSpanBs_previous_bar,noOfCurrencies);
    
    // 4h
+   ArrayResize(tenkan_sens_4h,noOfCurrencies);
    ArrayResize(kijun_sens_4h,noOfCurrencies);
    ArrayResize(senkouSpanAs_4h,noOfCurrencies);
    ArrayResize(senkouSpanBs_4h,noOfCurrencies);
+   ArrayResize(aboveTenkan_sens_4h,noOfCurrencies);
    ArrayResize(aboveKijun_sens_4h,noOfCurrencies);
    ArrayResize(aboveSenkouSpanAs_4h,noOfCurrencies);
    ArrayResize(aboveSenkouSpanBs_4h,noOfCurrencies);
    ArrayResize(counters_4h,noOfCurrencies);
    ArrayResize(currentBarTime_4h,noOfCurrencies);
+   ArrayResize(tenkan_sens_previous_bar_4h,noOfCurrencies);
    ArrayResize(kijun_sens_previous_bar_4h,noOfCurrencies);
    ArrayResize(senkouSpanAs_previous_bar_4h,noOfCurrencies);
    ArrayResize(senkouSpanBs_previous_bar_4h,noOfCurrencies);
    
    // 24h
+   ArrayResize(tenkan_sens_24h,noOfCurrencies);
    ArrayResize(kijun_sens_24h,noOfCurrencies);
    ArrayResize(senkouSpanAs_24h,noOfCurrencies);
    ArrayResize(senkouSpanBs_24h,noOfCurrencies);
+   ArrayResize(aboveTenkan_sens_24h,noOfCurrencies);
    ArrayResize(aboveKijun_sens_24h,noOfCurrencies);
    ArrayResize(aboveSenkouSpanAs_24h,noOfCurrencies);
    ArrayResize(aboveSenkouSpanBs_24h,noOfCurrencies);
    ArrayResize(counters_24h,noOfCurrencies);
    ArrayResize(currentBarTime_24h,noOfCurrencies);
+   ArrayResize(tenkan_sens_previous_bar_24h,noOfCurrencies);
    ArrayResize(kijun_sens_previous_bar_24h,noOfCurrencies);
    ArrayResize(senkouSpanAs_previous_bar_24h,noOfCurrencies);
    ArrayResize(senkouSpanBs_previous_bar_24h,noOfCurrencies);
 
    // halfh
+   ArrayResize(tenkan_sens_halfh,noOfCurrencies);
    ArrayResize(kijun_sens_halfh,noOfCurrencies);
    ArrayResize(senkouSpanAs_halfh,noOfCurrencies);
    ArrayResize(senkouSpanBs_halfh,noOfCurrencies);
+   ArrayResize(aboveTenkan_sens_halfh,noOfCurrencies);
    ArrayResize(aboveKijun_sens_halfh,noOfCurrencies);
    ArrayResize(aboveSenkouSpanAs_halfh,noOfCurrencies);
    ArrayResize(aboveSenkouSpanBs_halfh,noOfCurrencies);
    ArrayResize(counters_halfh,noOfCurrencies);
    ArrayResize(currentBarTime_halfh,noOfCurrencies);
+   ArrayResize(tenkan_sens_previous_bar_halfh,noOfCurrencies);
    ArrayResize(kijun_sens_previous_bar_halfh,noOfCurrencies);
    ArrayResize(senkouSpanAs_previous_bar_halfh,noOfCurrencies);
    ArrayResize(senkouSpanBs_previous_bar_halfh,noOfCurrencies);
@@ -165,17 +197,22 @@ int OnInit(){
       prices[i] = NormalizeDouble(MarketInfo(currenies[i],MODE_BID),5);
       
       // set variables for 1h
+      tenkan_sens[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_H1, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H1, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H1, 9, 26, 52, MODE_SENKOUSPANA,0),5);
       senkouSpanBs[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H1, 9, 26, 52, MODE_SENKOUSPANB,0),5);
+      aboveTenkan_sens[i] = checkLine(prices[i], tenkan_sens[i]);
       aboveKijun_sens[i] = checkLine(prices[i], kijun_sens[i]);
       aboveSenkouSpanAs[i] = checkLine(prices[i], senkouSpanAs[i]);
       aboveSenkouSpanBs[i] = checkLine(prices[i], senkouSpanBs[i]);
       currentBarTime[i] = iTime(currenies[i],PERIOD_H1,0);
       counters[i] = reportPeriod;
+      tenkan_sens_previous_bar[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_H1, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens_previous_bar[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H1, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs_previous_bar[i] = NormalizeDouble(iIchimoku(currenies[i],
@@ -184,17 +221,22 @@ int OnInit(){
          PERIOD_H1, 9, 26, 52, MODE_SENKOUSPANB,0),5);
       
       // set variables for 4h
+      tenkan_sens_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_H4, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H4, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H4, 9, 26, 52, MODE_SENKOUSPANA,0),5);
       senkouSpanBs_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H4, 9, 26, 52, MODE_SENKOUSPANB,0),5);
+      aboveTenkan_sens_4h[i] = checkLine(prices[i], tenkan_sens_4h[i]);
       aboveKijun_sens_4h[i] = checkLine(prices[i], kijun_sens_4h[i]);
       aboveSenkouSpanAs_4h[i] = checkLine(prices[i], senkouSpanAs_4h[i]);
       aboveSenkouSpanBs_4h[i] = checkLine(prices[i], senkouSpanBs_4h[i]);
       currentBarTime_4h[i] = iTime(currenies[i],PERIOD_H4,0);
       counters_4h[i] = reportPeriod;
+      tenkan_sens_previous_bar_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_H4, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens_previous_bar_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H4, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs_previous_bar_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
@@ -203,17 +245,22 @@ int OnInit(){
          PERIOD_H4, 9, 26, 52, MODE_SENKOUSPANB,0),5);
       
       // set variables for 24h
+      tenkan_sens_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_D1, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_D1, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_D1, 9, 26, 52, MODE_SENKOUSPANA,0),5);
       senkouSpanBs_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_D1, 9, 26, 52, MODE_SENKOUSPANB,0),5);
+      aboveTenkan_sens_24h[i] = checkLine(prices[i], tenkan_sens_24h[i]);
       aboveKijun_sens_24h[i] = checkLine(prices[i], kijun_sens_24h[i]);
       aboveSenkouSpanAs_24h[i] = checkLine(prices[i], senkouSpanAs_24h[i]);
       aboveSenkouSpanBs_24h[i] = checkLine(prices[i], senkouSpanBs_24h[i]);
       currentBarTime_24h[i] = iTime(currenies[i],PERIOD_D1,0);
       counters_24h[i] = reportPeriod;
+      tenkan_sens_previous_bar_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_D1, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens_previous_bar_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_D1, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs_previous_bar_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
@@ -222,17 +269,22 @@ int OnInit(){
          PERIOD_D1, 9, 26, 52, MODE_SENKOUSPANB,0),5);
       
       // set variables for halfh
+      tenkan_sens_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_M30, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_M30, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_M30, 9, 26, 52, MODE_SENKOUSPANA,0),5);
       senkouSpanBs_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_M30, 9, 26, 52, MODE_SENKOUSPANB,0),5);
+      aboveTenkan_sens_halfh[i] = checkLine(prices[i], tenkan_sens_halfh[i]);
       aboveKijun_sens_halfh[i] = checkLine(prices[i], kijun_sens_halfh[i]);
       aboveSenkouSpanAs_halfh[i] = checkLine(prices[i], senkouSpanAs_halfh[i]);
       aboveSenkouSpanBs_halfh[i] = checkLine(prices[i], senkouSpanBs_halfh[i]);
       currentBarTime_halfh[i] = iTime(currenies[i],PERIOD_M30,0);
       counters_halfh[i] = reportPeriod;
+      tenkan_sens_previous_bar_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_M30, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens_previous_bar_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_M30, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs_previous_bar_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
@@ -272,12 +324,22 @@ void OnTick(){
    for(int i = 0; i < noOfCurrencies; i++){
       prices[i] = NormalizeDouble(MarketInfo(currenies[i],MODE_BID),5);
       // 1h
+      tenkan_sens[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_H1, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H1, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H1, 9, 26, 52, MODE_SENKOUSPANA,0),5);
       senkouSpanBs[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H1, 9, 26, 52, MODE_SENKOUSPANB,0),5);
+      // check if price crossed tenkan_sen line   
+      if (checkLineFlip(aboveTenkan_sens[i],prices[i],tenkan_sens[i])){
+         aboveTenkan_sens[i] = !aboveTenkan_sens[i];
+         if(counters[i] >= reportPeriod){
+            sendAlert(currenies[i],"Conversion", prices[i], "1 hours");
+            counters[i] = 0;
+         }
+      }
       // check if price crossed kijun_sen line   
       if (checkLineFlip(aboveKijun_sens[i],prices[i],kijun_sens[i])){
          aboveKijun_sens[i] = !aboveKijun_sens[i];
@@ -307,34 +369,54 @@ void OnTick(){
       if (hasBarRolledOver(currentBarTime[i], iTime(currenies[i],PERIOD_H1,0))){
          // update current bar time
          currentBarTime[i] = iTime(currenies[i],PERIOD_H1,0);
+         tenkan_sens_previous_bar[i] = NormalizeDouble(iIchimoku(currenies[i],
+            PERIOD_H1, 9, 26, 52, MODE_TENKANSEN,1),5);
          kijun_sens_previous_bar[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_H1, 9, 26, 52, MODE_KIJUNSEN,1),5);
          senkouSpanAs_previous_bar[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_H1, 9, 26, 52, MODE_SENKOUSPANA,1),5);
          senkouSpanBs_previous_bar[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_H1, 9, 26, 52, MODE_SENKOUSPANB,1),5);
+         // tenkan_sen
+         if((tenkan_sens_previous_bar[i] <= iHigh(currenies[i], PERIOD_H1, 1)) && (tenkan_sens_previous_bar[i] >= iLow(currenies[i], PERIOD_H1, 1))){
+            //sendBarAlert(currenies[i], "Conversion", prices[i], "1 hour");
+            barReport = barReport + generateBarAlert(currenies[i], "Conversion", prices[i], "1 hour");
+         }
          // kijun_sen
          if((kijun_sens_previous_bar[i] <= iHigh(currenies[i], PERIOD_H1, 1)) && (kijun_sens_previous_bar[i] >= iLow(currenies[i], PERIOD_H1, 1))){
-            sendBarAlert(currenies[i], "Base", prices[i], "1 hour");
+            //sendBarAlert(currenies[i], "Base", prices[i], "1 hour");
+            barReport = barReport + generateBarAlert(currenies[i], "base", prices[i], "1 hour");
          }
          // span A
          if((senkouSpanAs_previous_bar[i] <= iHigh(currenies[i], PERIOD_H1, 1)) && (senkouSpanAs_previous_bar[i] >= iLow(currenies[i], PERIOD_H1, 1))){
-            sendBarAlert(currenies[i], "Span A", prices[i], "1 hour");
+            //sendBarAlert(currenies[i], "Span A", prices[i], "1 hour");
+            barReport = barReport + generateBarAlert(currenies[i], "Span A", prices[i], "1 hour");
          }
          // span B
          if((senkouSpanBs_previous_bar[i] <= iHigh(currenies[i], PERIOD_H1, 1)) && (senkouSpanBs_previous_bar[i] >= iLow(currenies[i], PERIOD_H1, 1))){
-            sendBarAlert(currenies[i], "Span B", prices[i], "1 hour");
+            //sendBarAlert(currenies[i], "Span B", prices[i], "1 hour");
+            barReport = barReport + generateBarAlert(currenies[i], "Span B", prices[i], "1 hour");
          }
       }
       
       
       //4h
+      tenkan_sens_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_H4, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H4, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_H4, 9, 26, 52, MODE_SENKOUSPANA,0),5);
       senkouSpanBs_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
-         PERIOD_H4, 9, 26, 52, MODE_SENKOUSPANB,0),5);    
+         PERIOD_H4, 9, 26, 52, MODE_SENKOUSPANB,0),5);
+      // check if price crossed tenkan_sen line   
+      if (checkLineFlip(aboveTenkan_sens_4h[i],prices[i],tenkan_sens_4h[i])){
+         aboveTenkan_sens_4h[i] = !aboveTenkan_sens_4h[i];
+         if(counters_4h[i] >= reportPeriod){
+            sendAlert(currenies[i],"Conversion", prices[i], "4 hours");
+            counters_4h[i] = 0;
+         }
+      }
       // check if price crossed kijun_sen line   
       if (checkLineFlip(aboveKijun_sens_4h[i],prices[i],kijun_sens_4h[i])){
          aboveKijun_sens_4h[i] = !aboveKijun_sens_4h[i];
@@ -359,38 +441,59 @@ void OnTick(){
             counters_4h[i] = 0;
          }
       }
+      
       // check bar
-      if (hasBarRolledOver(currentBarTime_4h[i], iTime(currenies[i],PERIOD_H4,0))){
+      if (hasBarRolledOver(currentBarTime[i], iTime(currenies[i],PERIOD_H4,0))){
          // update current bar time
-         currentBarTime_4h[i] = iTime(currenies[i],PERIOD_H4,0);
+         currentBarTime[i] = iTime(currenies[i],PERIOD_H4,0);
+         tenkan_sens_previous_bar_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
+            PERIOD_H4, 9, 26, 52, MODE_TENKANSEN,1),5);
          kijun_sens_previous_bar_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_H4, 9, 26, 52, MODE_KIJUNSEN,1),5);
          senkouSpanAs_previous_bar_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_H4, 9, 26, 52, MODE_SENKOUSPANA,1),5);
          senkouSpanBs_previous_bar_4h[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_H4, 9, 26, 52, MODE_SENKOUSPANB,1),5);
+         // tenkan_sen
+         if((tenkan_sens_previous_bar_4h[i] <= iHigh(currenies[i], PERIOD_H4, 1)) && (tenkan_sens_previous_bar_4h[i] >= iLow(currenies[i], PERIOD_H4, 1))){
+            //sendBarAlert(currenies[i], "Conversion", prices[i], "4 hour");
+            barReport = barReport + generateBarAlert(currenies[i], "Conversion", prices[i], "4 hour");
+         }
          // kijun_sen
          if((kijun_sens_previous_bar_4h[i] <= iHigh(currenies[i], PERIOD_H4, 1)) && (kijun_sens_previous_bar_4h[i] >= iLow(currenies[i], PERIOD_H4, 1))){
-            sendBarAlert(currenies[i], "Base", prices[i], "4 hours");
+            //sendBarAlert(currenies[i], "Base", prices[i], "4 hour");
+            barReport = barReport + generateBarAlert(currenies[i], "Base", prices[i], "4 hour");
          }
          // span A
          if((senkouSpanAs_previous_bar_4h[i] <= iHigh(currenies[i], PERIOD_H4, 1)) && (senkouSpanAs_previous_bar_4h[i] >= iLow(currenies[i], PERIOD_H4, 1))){
-            sendBarAlert(currenies[i], "Span A", prices[i], "4 hours");
+            //sendBarAlert(currenies[i], "Span A", prices[i], "4 hour");
+            barReport = barReport + generateBarAlert(currenies[i], "Span A", prices[i], "4 hour");
          }
          // span B
          if((senkouSpanBs_previous_bar_4h[i] <= iHigh(currenies[i], PERIOD_H4, 1)) && (senkouSpanBs_previous_bar_4h[i] >= iLow(currenies[i], PERIOD_H4, 1))){
-            sendBarAlert(currenies[i], "Span B", prices[i], "4 hours");
+            //sendBarAlert(currenies[i], "Span B", prices[i], "4 hour");
+            barReport = barReport + generateBarAlert(currenies[i], "Span B", prices[i], "4 hour");
          }
       }
       
       
       //24h
+      tenkan_sens_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_D1, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_D1, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_D1, 9, 26, 52, MODE_SENKOUSPANA,0),5);
       senkouSpanBs_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
-         PERIOD_D1, 9, 26, 52, MODE_SENKOUSPANB,0),5);    
+         PERIOD_D1, 9, 26, 52, MODE_SENKOUSPANB,0),5); 
+      // check if price crossed tenkan_sen line   
+      if (checkLineFlip(aboveTenkan_sens_24h[i],prices[i],tenkan_sens_24h[i])){
+         aboveTenkan_sens_24h[i] = !aboveTenkan_sens_24h[i];
+         if(counters_24h[i] >= reportPeriod){
+            sendAlert(currenies[i],"Conversion", prices[i], "1 day");
+            counters_24h[i] = 0;
+         }
+      }   
       // check if price crossed kijun_sen line   
       if (checkLineFlip(aboveKijun_sens_24h[i],prices[i],kijun_sens_24h[i])){
          aboveKijun_sens_24h[i] = !aboveKijun_sens_24h[i];
@@ -419,34 +522,54 @@ void OnTick(){
       if (hasBarRolledOver(currentBarTime_24h[i], iTime(currenies[i],PERIOD_D1,0))){
          // update current bar time
          currentBarTime_24h[i] = iTime(currenies[i],PERIOD_D1,0);
+         tenkan_sens_previous_bar_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
+            PERIOD_D1, 9, 26, 52, MODE_TENKANSEN,1),5);
          kijun_sens_previous_bar_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_D1, 9, 26, 52, MODE_KIJUNSEN,1),5);
          senkouSpanAs_previous_bar_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_D1, 9, 26, 52, MODE_SENKOUSPANA,1),5);
          senkouSpanBs_previous_bar_24h[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_D1, 9, 26, 52, MODE_SENKOUSPANB,1),5);
+         // tenkan_sen
+         if((tenkan_sens_previous_bar_24h[i] <= iHigh(currenies[i], PERIOD_D1, 1)) && (tenkan_sens_previous_bar_24h[i] >= iLow(currenies[i], PERIOD_D1, 1))){
+            //sendBarAlert(currenies[i], "Conversion", prices[i], "1 day");
+            barReport = barReport + generateBarAlert(currenies[i], "Conversion", prices[i], "1 day");
+         }
          // kijun_sen
          if((kijun_sens_previous_bar_24h[i] <= iHigh(currenies[i], PERIOD_D1, 1)) && (kijun_sens_previous_bar_24h[i] >= iLow(currenies[i], PERIOD_D1, 1))){
-            sendBarAlert(currenies[i], "Base", prices[i], "1 day");
+            //sendBarAlert(currenies[i], "Base", prices[i], "1 day");
+            barReport = barReport + generateBarAlert(currenies[i], "Base", prices[i], "1 day");
          }
          // span A
          if((senkouSpanAs_previous_bar_24h[i] <= iHigh(currenies[i], PERIOD_D1, 1)) && (senkouSpanAs_previous_bar_24h[i] >= iLow(currenies[i], PERIOD_D1, 1))){
-            sendBarAlert(currenies[i], "Span A", prices[i], "1 day");
+            //sendBarAlert(currenies[i], "Span A", prices[i], "1 day");
+            barReport = barReport + generateBarAlert(currenies[i], "Span A", prices[i], "1 day");
          }
          // span B
          if((senkouSpanBs_previous_bar_24h[i] <= iHigh(currenies[i], PERIOD_D1, 1)) && (senkouSpanBs_previous_bar_24h[i] >= iLow(currenies[i], PERIOD_D1, 1))){
-            sendBarAlert(currenies[i], "Span B", prices[i], "1 day");
+            //sendBarAlert(currenies[i], "Span B", prices[i], "1 day");
+            barReport = barReport + generateBarAlert(currenies[i], "Span B", prices[i], "1 day");
          }
       }
       
       
       //halfh
+      tenkan_sens_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
+         PERIOD_M30, 9, 26, 52, MODE_TENKANSEN,0),5);
       kijun_sens_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_M30, 9, 26, 52, MODE_KIJUNSEN,0),5);
       senkouSpanAs_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
          PERIOD_M30, 9, 26, 52, MODE_SENKOUSPANA,0),5);
       senkouSpanBs_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
-         PERIOD_M30, 9, 26, 52, MODE_SENKOUSPANB,0),5);    
+         PERIOD_M30, 9, 26, 52, MODE_SENKOUSPANB,0),5);   
+      // check if price crossed tenkan_sen line   
+      if (checkLineFlip(aboveTenkan_sens_halfh[i],prices[i],tenkan_sens_halfh[i])){
+         aboveTenkan_sens_halfh[i] = !aboveTenkan_sens_halfh[i];
+         if(counters_halfh[i] >= reportPeriod){
+            sendAlert(currenies[i],"Conversion", prices[i], "30 mins");
+            counters_halfh[i] = 0;
+         }
+      }    
       // check if price crossed kijun_sen line   
       if (checkLineFlip(aboveKijun_sens_halfh[i],prices[i],kijun_sens_halfh[i])){
          aboveKijun_sens_halfh[i] = !aboveKijun_sens_halfh[i];
@@ -475,27 +598,41 @@ void OnTick(){
       if (hasBarRolledOver(currentBarTime_halfh[i], iTime(currenies[i],PERIOD_M30,0))){
          // update current bar time
          currentBarTime_halfh[i] = iTime(currenies[i],PERIOD_M30,0);
+         tenkan_sens_previous_bar_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
+            PERIOD_M30, 9, 26, 52, MODE_TENKANSEN,1),5);
          kijun_sens_previous_bar_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_M30, 9, 26, 52, MODE_KIJUNSEN,1),5);
          senkouSpanAs_previous_bar_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_M30, 9, 26, 52, MODE_SENKOUSPANA,1),5);
          senkouSpanBs_previous_bar_halfh[i] = NormalizeDouble(iIchimoku(currenies[i],
             PERIOD_M30, 9, 26, 52, MODE_SENKOUSPANB,1),5);
+         // tenkan_sen
+         if((tenkan_sens_previous_bar_halfh[i] <= iHigh(currenies[i], PERIOD_D1, 1)) && (tenkan_sens_previous_bar_halfh[i] >= iLow(currenies[i], PERIOD_M30, 1))){
+            //sendBarAlert(currenies[i], "Conversion", prices[i], "30 mins");
+            barReport = barReport + generateBarAlert(currenies[i], "Conversion", prices[i], "30 mins");
+         }
          // kijun_sen
          if((kijun_sens_previous_bar_halfh[i] <= iHigh(currenies[i], PERIOD_M30, 1)) && (kijun_sens_previous_bar_halfh[i] >= iLow(currenies[i], PERIOD_M30, 1))){
-            sendBarAlert(currenies[i], "Base", prices[i], "30 mins");
+            //sendBarAlert(currenies[i], "Base", prices[i], "30 mins");
+            barReport = barReport + generateBarAlert(currenies[i], "Base", prices[i], "30 mins");
          }
          // span A
          if((senkouSpanAs_previous_bar_halfh[i] <= iHigh(currenies[i], PERIOD_M30, 1)) && (senkouSpanAs_previous_bar_halfh[i] >= iLow(currenies[i], PERIOD_M30, 1))){
-            sendBarAlert(currenies[i], "Span A", prices[i], "30 mins");
+            //sendBarAlert(currenies[i], "Span A", prices[i], "30 mins");
+            barReport = barReport + generateBarAlert(currenies[i], "Span A", prices[i], "30 mins");
          }
          // span B
          if((senkouSpanBs_previous_bar_halfh[i] <= iHigh(currenies[i], PERIOD_M30, 1)) && (senkouSpanBs_previous_bar_halfh[i] >= iLow(currenies[i], PERIOD_M30, 1))){
-            sendBarAlert(currenies[i], "Span B", prices[i], "30 mins");
+            //sendBarAlert(currenies[i], "Span B", prices[i], "30 mins");
+            barReport = barReport + generateBarAlert(currenies[i], "Span B", prices[i], "30 mins");
          }
       }
      
    }
+}
+
+string generateBarAlert(string _symbol, string _line, double _price, string _period){
+   return _symbol + " " + _period + " " + _line + " was in between bar! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price + " | ";
 }
 
 void sendBarAlert(string _symbol, string _line, double _price, string _period){
@@ -504,8 +641,8 @@ void sendBarAlert(string _symbol, string _line, double _price, string _period){
 }
 
 void sendAlert(string _symbol, string _line, double _price, string _period){
-   SendNotification(_symbol + " " + _period + " " + _line + " crossed! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price);
-   Alert(_symbol + " " + _period + " " + _line + " crossed! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price);
+   //SendNotification(_symbol + " " + _period + " " + _line + " crossed! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price);
+   //Alert(_symbol + " " + _period + " " + _line + " crossed! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price);
 }
 
 void OnTimer(){
@@ -520,6 +657,13 @@ void OnTimer(){
    }
    for(int i = 0; i < ArraySize(counters_halfh); i++){
       counters[i]++;
+   }
+   
+   // check current minute and seconds to send aggrevated alert
+   if ((StringLen(barReport) >= 1) && (Seconds() >= 10) && ((Minute() == 0 || Minute() == 30))){
+      Alert(barReport); 
+      SendNotification(barReport);
+      barReport = "";
    }
 }
 

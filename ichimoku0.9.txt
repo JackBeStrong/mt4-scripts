@@ -641,8 +641,8 @@ void sendBarAlert(string _symbol, string _line, double _price, string _period){
 }
 
 void sendAlert(string _symbol, string _line, double _price, string _period){
-   SendNotification(_symbol + " " + _period + " " + _line + " crossed! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price);
-   Alert(_symbol + " " + _period + " " + _line + " crossed! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price);
+   //SendNotification(_symbol + " " + _period + " " + _line + " crossed! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price);
+   //Alert(_symbol + " " + _period + " " + _line + " crossed! Time: " + TimeToStr(TimeLocal(), TIME_SECONDS) + " Price: " + _price);
 }
 
 void OnTimer(){
